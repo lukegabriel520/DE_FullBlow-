@@ -1,6 +1,6 @@
 # Data Engineering Lab
 
-Hands-on practice for Data Engineer roles in **Manila** and **Dubai**. Both markets hire on **Azure** and **Databricks**, so that is the stack this repo is built around.
+Hello. This is my hands-on practice for Data Engineer roles in **Manila** and **Dubai**. Both markets hire on **Azure** and **Databricks**, so that is the stack this repo is built around.
 
 The end goal is one capstone: mock events in, warehouse tables out, scheduled by Airflow. I am not there yet. This folder is the work in progress.
 
