@@ -4,8 +4,8 @@ Hello. This is my hands-on practice for Data Engineer roles in **Manila** and **
 
 The end goal is one capstone: mock events in, warehouse tables out, scheduled by Airflow. I am not there yet. This folder is the work in progress.
 
-**Now:** Phase 1 is done (SQL + a real star schema in Postgres).  
-**Next:** Phase 2 — PySpark and Delta Lake on Databricks Free Edition.
+**Now:** Phases 1 and 2 are done (SQL + star schema in Postgres; PySpark + Delta on Databricks Free Edition).  
+**Next:** Phase 3 — Terraform + Azure (resource group, Blob Storage, Postgres, billing alerts).
 
 ---
 
@@ -30,7 +30,7 @@ Databricks + PySpark + Delta Lake
 Terraform creates the Azure storage, resource group, and database.
 ```
 
-Until Phase 3, Azure is not in this repo. The SQL lab below is local Docker Postgres.
+Until Phase 3, Azure is not in this repo. Phase 1 runs on local Docker Postgres. Phase 2 runs on Databricks Free Edition (cloud notebooks, not local Spark).
 
 ---
 
@@ -39,14 +39,14 @@ Until Phase 3, Azure is not in this repo. The SQL lab below is local Docker Post
 | Phase | Weeks | Status |
 | --- | --- | --- |
 | 1. SQL + physical star schema | 1–2 | **Done** |
-| 2. Databricks, PySpark, Delta Lake | 3–5 | Next |
+| 2. Databricks, PySpark, Delta Lake | 3–5 | **Done** |
 | 3. Terraform + Azure | 6–7 | Not started |
 | 4. Airflow + Kafka | 8–10 | Not started |
 | 5. Capstone + interview prep | 11–12 | Not started |
 
 ---
 
-## Phase 1 — what is in here
+## Phase 1 — SQL lab (local Postgres)
 
 Two datasets in the same Postgres database (`ecommerce`):
 
@@ -87,14 +87,14 @@ dim_date ──── sales_fact ──── dim_product
 | --- | --- |
 | `SQL/init/03_star_schema.sql` | `CREATE TABLE` + PKs/FKs |
 | `SQL/init/04_star_seed.sql` | Load dims first, fact last |
+| `SQL/queries/02_star_schema_check.sql` | Verify tables and FKs |
+| `SQL/queries/03_star_seed_check.sql` | Row counts after seed |
 | `SQL/queries/04_star_queries.sql` | March 2024 revenue by category; AOV by month |
 | `SQL/queries/05_units_by_channel.sql` | Units sold by `ONLINE` / `RETAIL` |
 
 AOV uses `COUNT(DISTINCT order_id)` so two lines on the same checkout still count as one order.
 
----
-
-## Run the SQL lab
+### Run the SQL lab
 
 Needs [Docker Desktop](https://www.docker.com/products/docker-desktop/) and PowerShell.
 
@@ -123,29 +123,53 @@ docker compose up -d
 
 ---
 
+## Phase 2 — Databricks Free Edition (PySpark + Delta)
+
+Notebooks live in `DataBricks/`. Run them in a [Databricks Free Edition](https://www.databricks.com/learn/free-edition) workspace (Community Edition was retired January 2026). `spark` is already available in the notebook — no local Spark install.
+
+Free Edition quirks worth knowing:
+
+- **Unity Catalog** is on by default. Public DBFS paths like `/tmp/...` are blocked.
+- Delta files go under a **Volume**: `/Volumes/workspace/default/de_lab/...`
+- `MERGE INTO` on UC **managed** tables (`saveAsTable`) may fail. Use path-based Delta: `delta.\`/Volumes/...\``
+- If you overwrite a Delta table with a different schema, add `.option("overwriteSchema", "true")`
+
+| Notebook | What it covers |
+| --- | --- |
+| `01_hello_spark.py.ipynb` | `createDataFrame`, `printSchema`, `show`, `count` |
+| `02_dataframe_basics.py.ipynb` | `filter`, `groupBy`, `agg` — units by channel |
+| `03_join_revenue_by_category.py.ipynb` | Inner join fact + product dim, revenue by category |
+| `04_delta_merge_timetravel.py.ipynb` | Write Delta, `MERGE` upsert, `DESCRIBE HISTORY`, `versionAsOf` |
+| `05_medallion_bronze_silver_gold.py.ipynb` | Bronze → Silver (clean + join) → Gold (aggregate) |
+
+**Join** = combine tables for a query (read). **MERGE** = apply updates into a target table (write). **Medallion** = layered Delta tables: Bronze (landed), Silver (cleaned), Gold (aggregated).
+
+Gold output matches the Postgres star query: Apparel 100, Electronics 116, Home 81 (completed revenue only).
+
+---
+
 ## Repo layout
 
 ```text
-SQL/                 Phase 1 (this is the only code so far)
+SQL/                 Phase 1 — local Postgres lab
   docker-compose.yml
   init/              schema + seed (runs on first boot)
   queries/           practice queries
   scripts/           run_query.ps1
 
-databricks/          Phase 2 (not in the repo yet)
-terraform/           Phase 3
-airflow/             Phase 4
-kafka/               Phase 4
-capstone/            Phase 5
+DataBricks/          Phase 2 — Databricks notebooks (Free Edition)
+
+terraform/           Phase 3 (not started)
+airflow/             Phase 4 (not started)
+kafka/               Phase 4 (not started)
+capstone/            Phase 5 (not started)
 ```
 
 Later phases get their own folders. They do not go under `SQL/`.
 
 ---
 
-## Phases 2–5 (not built yet)
-
-**Phase 2** — Databricks Free Edition, PySpark DataFrames, Delta Lake (`MERGE`, time travel). Community Edition was retired in January 2026.
+## Phases 3–5 (not built yet)
 
 **Phase 3** — Terraform: Azure resource group, Blob Storage, Postgres. Billing alerts before anything is applied.
 
